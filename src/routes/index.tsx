@@ -1,9 +1,10 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useMemo, useRef, useState, useEffect } from "react";
-import { AIRPORTS, DESTINATIONS, INTERESTS, findAirport, type Interest } from "@/lib/airports";
+import { DESTINATIONS, INTERESTS, searchAirports, findAirport, type Interest } from "@/lib/airports";
 import { recommend, flightMinutes, type Sort } from "@/lib/recommend";
 import { AirportDetail } from "@/components/AirportDetail";
 
+const PAGE_SIZE = 50;
 const FlyMap = lazy(() => import("@/components/FlyMap"));
 
 export const Route = createFileRoute("/")({
@@ -31,18 +32,22 @@ function Index() {
   const [detail, setDetail] = useState<string | null>(null);
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  const results = useMemo(() => recommend(search.from, DESTINATIONS, search.maxNm, search.interests, sort), [search, sort]);
-  const mapAirports = useMemo(() => results.map((r) => r.airport), [results]);
-  const detailRes = results.find((r) => r.airport.id === detail);
+  const allResults = useMemo(() => recommend(search.from, DESTINATIONS, search.maxNm, search.interests, sort), [search, sort]);
+  const [visible, setVisible] = useState(PAGE_SIZE);
+  const results = useMemo(() => allResults.slice(0, visible), [allResults, visible]);
+  // The map always plots every destination in range; only the card list is paginated.
+  const mapAirports = useMemo(() => allResults.map((r) => r.airport), [allResults]);
+  const suggestions = useMemo(() => searchAirports(query), [query]);
+  const detailRes = allResults.find((r) => r.airport.id === detail);
 
   useEffect(() => { if (selected) cardRefs.current[selected]?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [selected]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const from = findAirport(query);
-    if (!from) { setError("Airport not found in our Mid-Atlantic data. Try KFDK, KESN or Lancaster."); return; }
+    if (!from) { setError("Airport not found. Try an ID like KFDK or KLAX, or a name like Lancaster."); return; }
     setError(""); setSelected(null); setQuery(from.id);
-    setSearch({ from, maxNm, interests });
+    setVisible(PAGE_SIZE); setSearch({ from, maxNm, interests });
   }
 
   return (
@@ -56,7 +61,7 @@ function Index() {
             <label className="block">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Departure airport</span>
               <input list="airports" value={query} onChange={(e) => setQuery(e.target.value)} className="mt-1 w-full rounded-lg border bg-secondary px-3 py-2.5 font-mono uppercase outline-none focus:ring-2 focus:ring-ring" />
-              <datalist id="airports">{AIRPORTS.map((a) => <option key={a.id} value={a.id}>{a.name}, {a.city} {a.state}</option>)}</datalist>
+              <datalist id="airports">{suggestions.map((a) => <option key={a.id} value={a.id}>{a.name}, {a.city} {a.state}</option>)}</datalist>
             </label>
             <label className="block">
               <span className="flex justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground"><span>Max distance</span><span className="text-foreground">{maxNm} nm · ~{flightMinutes(maxNm)} min</span></span>
@@ -85,12 +90,12 @@ function Index() {
         </div>
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground"><b className="text-foreground">{results.length}</b> destinations from {search.from.id}</p>
+            <p className="text-sm text-muted-foreground"><b className="text-foreground">{allResults.length}</b> destinations from {search.from.id}{allResults.length > visible && ` (showing ${visible})`}</p>
             <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="rounded-lg border bg-background px-2 py-1.5 text-sm">
               <option value="recommended">Recommended</option><option value="nearest">Nearest</option><option value="farthest">Farthest</option>
             </select>
           </div>
-          {results.length === 0 && <p className="rounded-2xl bg-secondary p-6 text-muted-foreground">No matches. Try a longer range or fewer interests.</p>}
+          {allResults.length === 0 && <p className="rounded-2xl bg-secondary p-6 text-muted-foreground">No matches. Try a longer range or fewer interests.</p>}
           <div className="space-y-3">
             {results.map(({ airport: ap, nm }) => (
               <article key={ap.id} ref={(n) => { cardRefs.current[ap.id] = n; }} onMouseEnter={() => setSelected(ap.id)} onClick={() => { setSelected(ap.id); setDetail(ap.id); }}
@@ -110,7 +115,8 @@ function Index() {
               </article>
             ))}
           </div>
-          <p className="mt-6 text-xs text-muted-foreground">*Estimated flight times assume 110 knots, straight line, no wind. Approximate only — not intended for operational flight planning. Mid-Atlantic region MVP.</p>
+          {allResults.length > visible && <button onClick={() => setVisible((v) => v + PAGE_SIZE)} className="mt-4 w-full rounded-lg border py-2.5 text-sm font-semibold transition hover:border-primary">Show more ({allResults.length - visible} remaining)</button>}
+          <p className="mt-6 text-xs text-muted-foreground">*Estimated flight times assume 110 knots, straight line, no wind. Approximate only — not intended for operational flight planning. Continental US.</p>
         </section>
       </main>
       {detailRes && <AirportDetail ap={detailRes.airport} nm={detailRes.nm} onClose={() => setDetail(null)} />}

@@ -41,7 +41,7 @@ export function AirportDetail({ ap, nm, onClose }: { ap: Airport; nm: number; on
           ))}
         </dl>
         <p className="mt-2 text-xs text-muted-foreground">Flight time is approximate (110 kt, straight line). Not for operational flight planning.</p>
-        <h3 className="mt-8 mb-3 font-display text-2xl">Things to do</h3>
+        {ap.attractions.length > 0 && <h3 className="mt-8 mb-3 font-display text-2xl">Things to do</h3>}
         <ul className="space-y-2">
           {ap.attractions.map((t) => (
             <li key={t.name} className="flex items-baseline justify-between gap-4 border-b pb-2">

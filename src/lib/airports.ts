@@ -28,8 +28,13 @@ export const AIRPORTS: Airport[] = (generated as GeneratedAirport[]).map((ap) =>
   attractions: CURATION[ap.id]?.attractions ?? [],
 }));
 
-/** Airports with curated attractions; these are the ones we recommend as destinations. */
-export const DESTINATIONS: Airport[] = AIRPORTS.filter((ap) => ap.attractions.length > 0);
+/** Uncurated airports need at least this long a runway to be recommended as destinations (skips tiny private strips). */
+export const MIN_DESTINATION_RUNWAY_FT = 3000;
+
+/** Recommendable destinations: every curated airport, plus any other airport with a decent runway. */
+export const DESTINATIONS: Airport[] = AIRPORTS.filter(
+  (ap) => ap.attractions.length > 0 || ap.runwayFt >= MIN_DESTINATION_RUNWAY_FT,
+);
 
 const BY_ID = new Map(AIRPORTS.map((ap) => [ap.id, ap]));
 
@@ -42,4 +47,19 @@ export function findAirport(q: string): Airport | undefined {
   // Otherwise match on name/city, preferring airports we have curated content for.
   const hits = AIRPORTS.filter((x) => x.name.toLowerCase().includes(s) || x.city.toLowerCase().includes(s));
   return hits.find((x) => x.attractions.length > 0) ?? hits[0];
+}
+
+/** Autocomplete: id prefix matches first, then name/city matches; curated airports first within each group. */
+export function searchAirports(q: string, limit = 10): Airport[] {
+  const s = q.trim().toLowerCase();
+  if (!s) return DESTINATIONS.filter((ap) => ap.attractions.length > 0).slice(0, limit);
+  const rank = (ap: Airport) => {
+    const id = ap.id.toLowerCase();
+    const idScore = id.startsWith(s) || id.startsWith(`k${s}`) ? 0 : 2;
+    const textHit = ap.name.toLowerCase().includes(s) || ap.city.toLowerCase().includes(s);
+    if (idScore && !textHit) return -1;
+    return idScore + (ap.attractions.length > 0 ? 0 : 1);
+  };
+  return AIRPORTS.map((ap) => ({ ap, r: rank(ap) })).filter((x) => x.r >= 0)
+    .sort((a, b) => a.r - b.r).slice(0, limit).map((x) => x.ap);
 }

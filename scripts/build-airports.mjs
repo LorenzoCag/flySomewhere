@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const dir = new URL("../src/data/", import.meta.url);
 
-// Regions and airport types to keep. Edit these to widen the app's coverage.
-const STATES = new Set(["MD", "DE", "NJ", "VA", "PA", "NC", "WV", "DC"]);
+// Coverage: continental US (the 48 states + DC). Edit to change the app's coverage.
+const EXCLUDED_STATES = new Set(["AK", "HI"]);
 const TYPES = new Set(["small_airport", "medium_airport", "large_airport"]);
 
 /** Minimal RFC 4180 CSV parser (quoted fields, escaped quotes, embedded newlines). */
@@ -48,7 +48,7 @@ const airports = [];
 for (const a of read("airports.csv")) {
   if (a.iso_country !== "US" || !TYPES.has(a.type)) continue;
   const state = a.iso_region.replace(/^US-/, "");
-  if (!STATES.has(state)) continue;
+  if (EXCLUDED_STATES.has(state)) continue;
   const runwayFt = longest.get(a.ident);
   if (!runwayFt) continue; // no usable runway data
   airports.push({

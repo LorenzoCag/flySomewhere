@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DESTINATIONS as AIRPORTS, findAirport } from "./airports";
+import { AIRPORTS as ALL, DESTINATIONS as AIRPORTS, findAirport, searchAirports } from "./airports";
 import { recommend, flightMinutes, distanceNm } from "./recommend";
 const fdk = findAirport("KFDK")!;
 describe("recommendations", () => {
@@ -24,5 +24,21 @@ describe("airport data", () => {
     const { CURATION } = await import("./attractions");
     const ids = new Set(AIRPORTS.map((a) => a.id));
     for (const id of Object.keys(CURATION)) expect(ids.has(id), id).toBe(true);
+  });
+});
+
+describe("continental US coverage", () => {
+  it("includes airports from across the country but not AK/HI", () => {
+    for (const id of ["KLAX", "KSEA", "KMIA", "KORD", "KDEN"]) expect(findAirport(id), id).toBeDefined();
+    expect(ALL.some((a) => a.state === "AK" || a.state === "HI")).toBe(false);
+  });
+  it("recommends destinations away from the Mid-Atlantic", () => {
+    const r = recommend(findAirport("KDEN")!, AIRPORTS, 100, [], "nearest");
+    expect(r.length).toBeGreaterThan(0);
+  });
+  it("autocompletes by id and by name", () => {
+    expect(searchAirports("KFD")[0]!.id).toBe("KFDK");
+    expect(searchAirports("frederick").some((a) => a.id === "KFDK")).toBe(true);
+    expect(searchAirports("", 5)).toHaveLength(5);
   });
 });
