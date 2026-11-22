@@ -1,6 +1,6 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { lazy, Suspense, useMemo, useRef, useState, useEffect } from "react";
-import { AIRPORTS, INTERESTS, findAirport, type Interest } from "@/lib/airports";
+import { AIRPORTS, DESTINATIONS, INTERESTS, findAirport, type Interest } from "@/lib/airports";
 import { recommend, flightMinutes, type Sort } from "@/lib/recommend";
 import { AirportDetail } from "@/components/AirportDetail";
 
@@ -31,7 +31,7 @@ function Index() {
   const [detail, setDetail] = useState<string | null>(null);
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  const results = useMemo(() => recommend(search.from, AIRPORTS, search.maxNm, search.interests, sort), [search, sort]);
+  const results = useMemo(() => recommend(search.from, DESTINATIONS, search.maxNm, search.interests, sort), [search, sort]);
   const mapAirports = useMemo(() => results.map((r) => r.airport), [results]);
   const detailRes = results.find((r) => r.airport.id === detail);
 
@@ -40,7 +40,7 @@ function Index() {
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const from = findAirport(query);
-    if (!from) { setError("Airport not found in our Mid-Atlantic list. Try KFDK, KESN or Lancaster."); return; }
+    if (!from) { setError("Airport not found in our Mid-Atlantic data. Try KFDK, KESN or Lancaster."); return; }
     setError(""); setSelected(null); setQuery(from.id);
     setSearch({ from, maxNm, interests });
   }

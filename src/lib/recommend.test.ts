@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AIRPORTS, findAirport } from "./airports";
+import { DESTINATIONS as AIRPORTS, findAirport } from "./airports";
 import { recommend, flightMinutes, distanceNm } from "./recommend";
 const fdk = findAirport("KFDK")!;
 describe("recommendations", () => {
@@ -16,5 +16,13 @@ describe("recommendations", () => {
     const r = recommend(fdk, AIRPORTS, 300, [], "nearest");
     expect(r[0]!.nm).toBeLessThanOrEqual(r[1]!.nm);
     expect(distanceNm(fdk, fdk)).toBe(0);
+  });
+});
+
+describe("airport data", () => {
+  it("every curated airport id exists in the CSV-derived data", async () => {
+    const { CURATION } = await import("./attractions");
+    const ids = new Set(AIRPORTS.map((a) => a.id));
+    for (const id of Object.keys(CURATION)) expect(ids.has(id), id).toBe(true);
   });
 });
