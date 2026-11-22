@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { AIRPORTS as ALL, DESTINATIONS as AIRPORTS, findAirport, searchAirports } from "./airports";
+import { deriveFromOsm } from "./enrich";
 import { recommend, flightMinutes, distanceNm } from "./recommend";
 const fdk = findAirport("KFDK")!;
 describe("recommendations", () => {
@@ -40,5 +41,23 @@ describe("continental US coverage", () => {
     expect(searchAirports("KFD")[0]!.id).toBe("KFDK");
     expect(searchAirports("frederick").some((a) => a.id === "KFDK")).toBe(true);
     expect(searchAirports("", 5)).toHaveLength(5);
+  });
+});
+
+describe("OpenStreetMap enrichment", () => {
+  it("derives interests and attractions from nearby places", () => {
+    const r = deriveFromOsm({
+      restaurants: [{ name: "Runway Grill", mi: 0.2 }, { name: "Far Diner", mi: 4 }],
+      museums: [{ name: "Town Museum", mi: 2 }, { name: "Air Museum", mi: 3, aviation: true }],
+      cities: [{ name: "Smallville", mi: 3 }, { name: "Metropolis", mi: 8, city: true }],
+      beaches: [{ name: "Too Far Beach", mi: 9 }],
+    });
+    expect(r.interests).toEqual(["restaurants", "museums", "cities"]);
+    expect(r.attractions.map((a) => a.name)).toEqual(["Runway Grill", "Air Museum", "Town Museum", "Metropolis"]);
+    expect(r.attractions[0]!.note).toMatch(/on or next to/i);
+  });
+  it("returns nothing when there is no data", () => {
+    expect(deriveFromOsm(undefined)).toEqual({ interests: [], attractions: [] });
+    expect(deriveFromOsm({})).toEqual({ interests: [], attractions: [] });
   });
 });

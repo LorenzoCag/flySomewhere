@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "data:airports": "node scripts/build-airports.mjs"
+    "data:airports": "node scripts/build-airports.mjs",
+    "data:enrich": "node scripts/enrich-airports.mjs"
   },
   "overrides": {
     "rolldown": "1.2.1",

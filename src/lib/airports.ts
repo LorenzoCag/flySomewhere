@@ -1,8 +1,11 @@
 // Airport facts (id, name, city, state, coordinates, longest runway) are generated from the OurAirports
 // CSVs in src/data/ (see scripts/build-airports.mjs). Interests and attractions are hand-curated in
-// ./attractions.ts and merged on by airport id.
+// ./attractions.ts and merged on by airport id. Airports without curated entries get interests and attractions
+// derived from OpenStreetMap data (src/data/airports.osm.json, see scripts/enrich-airports.mjs).
 import generated from "@/data/airports.generated.json";
+import osm from "@/data/airports.osm.json";
 import { CURATION } from "./attractions";
+import { deriveFromOsm, type OsmEnrichment } from "./enrich";
 
 export type Interest = "restaurants" | "beaches" | "nature" | "museums" | "cities" | "scenic";
 export const INTERESTS: { id: Interest; label: string }[] = [
@@ -22,11 +25,11 @@ export type Airport = {
 type GeneratedAirport = Omit<Airport, "interests" | "attractions">;
 
 /** Every airport in the CSV-derived dataset; searchable as a departure field. */
-export const AIRPORTS: Airport[] = (generated as GeneratedAirport[]).map((ap) => ({
-  ...ap,
-  interests: CURATION[ap.id]?.interests ?? [],
-  attractions: CURATION[ap.id]?.attractions ?? [],
-}));
+export const AIRPORTS: Airport[] = (generated as GeneratedAirport[]).map((ap) => {
+  // Hand-curated data always wins over what we derived from OpenStreetMap.
+  const { interests, attractions } = CURATION[ap.id] ?? deriveFromOsm((osm as Record<string, OsmEnrichment>)[ap.id]);
+  return { ...ap, interests, attractions };
+});
 
 /** Uncurated airports need at least this long a runway to be recommended as destinations (skips tiny private strips). */
 export const MIN_DESTINATION_RUNWAY_FT = 3000;
